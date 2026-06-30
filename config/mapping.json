@@ -1,0 +1,13 @@
+{
+  "TotalSales": {
+    "source_table": "sales_by_branch",
+    "aggregation": "sum",
+    "field": "value"
+  },
+
+  "TotalOrders": {
+    "source_table": "orders_by_branch",
+    "aggregation": "sum",
+    "field": "value"
+  }
+}

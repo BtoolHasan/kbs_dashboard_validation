@@ -1,38 +1,72 @@
 import collections
 import collections.abc
-collections.Mapping = collections.abc.Mapping
-from generators.facts_generator import FactsGenerator
 
+# Fix for experta compatibility
 collections.Mapping = collections.abc.Mapping
 collections.MutableMapping = collections.abc.MutableMapping
 collections.Sequence = collections.abc.Sequence
 
-from experta import *
-from excel_reader.data_extractor import DataExtractor
 from excel_reader.file_loader import load_excel
-from facts.branches_fact import BranchesTotalFact
-from facts.summary_fact import SummaryFact
-from rules.dashboard_validation_engine import DashboardValidationEngine
+from excel_reader.sheet_name_parser import SheetNameParser
+from routing.sheet_router import SheetRouter
+from excel_reader.excel_processor import ExcelProcessor
+
+from generators.facts_generator import FactGenerator
+from rules.dashboard_validation_engine import ValidationEngine      
+
 
 def main():
+
+    # 1) Load Excel file
     workbook = load_excel(
-        "data/KBS_Dashboard_Validation_v1.xlsx"
+        "data/KBS_Dashboard_Generic_v2.xlsx"
     )
 
-    print(workbook.sheetnames)  
+    print("Sheets:", workbook.sheetnames)
 
-    extractor = DataExtractor(workbook)
-    summary, branches = extractor.extract()
-    generator = FactsGenerator()
-    facts = generator.generate_all(summary, branches)
-    engine = DashboardValidationEngine()
+    # 2) Process workbook
+    parser = SheetNameParser()
+    router = SheetRouter()
+
+    processor = ExcelProcessor(
+        parser=parser,
+        router=router
+    )
+
+    processed_data = processor.process(workbook)
+
+    print("\nProcessed Data:")
+    print(processed_data)
+
+    # 3) Generate Facts
+    fact_generator = FactGenerator()
+    facts = fact_generator.generate(processed_data)
+
+    print("\nGenerated Facts:")
+    for fact in facts:
+        print(fact)
+
+    # 4) Run Validation Engine
+    engine = ValidationEngine(
+        mapping_path="config/mapping.json"
+    )
+
     engine.reset()
 
     for fact in facts:
         engine.declare(fact)
 
     engine.run()
+    engine.run_validation()
 
+    # 5) Print results
+    print("\nValidation Errors:")
+
+    if engine.errors:
+        for error in engine.errors:
+            print("❌", error)
+    else:
+        print("✅ All validations passed successfully!")
 
 
 if __name__ == "__main__":

@@ -1,56 +1,37 @@
-from facts.summary_fact import SummaryFact
-from facts.branches_fact import BranchesFact, BranchesTotalFact
+from facts.facts import MetricFact, TableRowFact
 
 
-class FactsGenerator:
+class FactGenerator:
+    """
+    Converts ExcelProcessor output into Experta Facts.
 
-    def generate_summary_fact(self, summary):
-        return SummaryFact(
-            total_sales=summary.total_sales,
-            total_orders=summary.total_orders,
-            average_order_value=summary.average_order_value
-        )
-        
-    def generate_branches_facts(self, branches):
+    This is the bridge between:
+        Structured Data  →  Knowledge Facts
+    """
 
+    def generate(self, processed_data: dict):
         facts = []
 
-        for branch in branches:
-            facts.append(
-                BranchesFact(
-                    name=branch.name,
-                    sales=branch.sales,
-                    orders=branch.orders,
-                  
+        for metric_name, result in processed_data.items():
+
+            # Case 1: Metric (DATA_LABEL)
+            if "value" in result:
+                fact = MetricFact(
+                    name=result.get("metric_name", metric_name),
+                    value=result["value"]
                 )
-            )
+                facts.append(fact)
 
-        return facts
-    
-    def generate_branches_total_fact(self, branches):
+            # Case 2: Table (TABLE)
+            elif "rows" in result:
+                table_name = result.get("metric_name", metric_name)
 
-        total_sales = sum(branch.sales for branch in branches)
-        total_orders = sum(branch.orders for branch in branches)
+                for row in result["rows"]:
 
-        return BranchesTotalFact(
-            total_sales=total_sales,
-            total_orders=total_orders
-        )
-
-    def generate_all(self, summary, branches):
-
-        facts = []
-
-        facts.append(
-            self.generate_summary_fact(summary)
-        )
-
-        facts.extend(
-            self.generate_branches_facts(branches)
-        )
-
-        facts.append(
-            self.generate_branches_total_fact(branches)
-        )
+                    fact = TableRowFact(
+                        name=table_name,
+                        row_data=row
+                    )
+                    facts.append(fact)
 
         return facts
